@@ -51,6 +51,15 @@ class Player(BaseBot):
         '''
         equity, _ = self._calculate_equity(current_state, simulations=simulations)
 
+        if equity >=0.85:
+            # If we have a huge edge, go all-in
+            if current_state.can_act(ActionRaise):
+                return ActionRaise(current_state.my_chips)
+            elif current_state.can_act(ActionCall):
+                return ActionCall()
+            else:
+                return ActionCheck()
+
         if equity >= 0.65:
             if current_state.can_act(ActionRaise):
                 min_raise, max_raise = current_state.raise_bounds
