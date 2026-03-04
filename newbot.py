@@ -1142,6 +1142,8 @@ class Player(BaseBot):
     # ------------------------------------------------------------------
     # Flop / Turn
     # ------------------------------------------------------------------
+
+
     def _postflop_action(self, game_info: GameInfo, state: PokerState, budget: float):
         street = _normalize_street(state.street)
         eq = self._equity(state, budget)
@@ -1245,9 +1247,126 @@ class Player(BaseBot):
 
         return ActionCheck()
 
-    # ------------------------------------------------------------------
-    # River
-    # ------------------------------------------------------------------
+    # def _postflop_action(self, game_info: GameInfo, state: PokerState, budget: float):
+    #     street = _normalize_street(state.street)
+    #     eq = self._equity(state, budget)
+    #     made = made_hand_info(state.my_hand, state.board)
+    #     draws = draw_info(state.my_hand, state.board)
+    #     tex = board_texture(state.board)
+    #     cost = state.cost_to_call
+    #     pot = max(1, state.pot)
+    #     spr = stack_to_pot_ratio(state)
+    #     fold_rate = self.opp.fold_to_aggression_rate()
+    #     is_first_to_act = state.is_bb  # BB acts first on all postflop streets in this engine.
+
+    #     # --- FIX 1: Respect Massive Aggression ---
+    #     # If facing a near-pot bet or overbet, slash our equity because the
+    #     # opponent's range is heavily polarized to monsters.
+    #     if cost >= pot * 0.70:
+    #         eq *= 0.65
+
+    #     strong_made = made["category"] >= 3 or made["overpair"] or (made["top_pair"] and eq >= 0.62)
+    #     medium_made = made["category"] >= 2 or made["top_pair"] or made["second_pair"]
+    #     strong_draw = draws["combo_draw"] or draws["nut_flush_draw"] or (draws["flush_draw"] and draws["oesd"])
+    #     # semi_bluff = strong_draw or (draws["flush_draw"] and eq >= 0.30) or (draws["oesd"] and eq >= 0.28)
+    #     semi_bluff = False
+
+    #     # Facing a bet / raise.
+    #     if cost > 0:
+    #         need = pot_odds_threshold(cost, pot)
+    #         mdf = minimum_defense_fraction(cost, pot)
+    #         # Slight anti-overfold floor in frequent small-bet spots.
+    #         call_floor = 0.0
+    #         if cost <= 0.33 * pot:
+    #             call_floor = 0.02 + 0.03 * (mdf - 0.50)
+
+    #         if strong_made and eq >= 0.66:
+    #             # --- FIX 2: Cap Raises on Paired Boards ---
+    #             # Do not get into 4-bet wars with straights/flushes if the board
+    #             # is paired and allows for a Full House or better (category < 6).
+    #             if tex["paired"] and made["category"] < 6:
+    #                 if eq + call_floor >= need:
+    #                     return ActionCall()
+    #                 return ActionFold() if state.can_act(ActionFold) else ActionCheck()
+
+    #             if state.can_act(ActionRaise):
+    #                 if spr <= 1.6:
+    #                     return ActionRaise(state.raise_bounds[1])
+    #                 frac = 0.95 if tex["very_wet"] else 0.70
+    #                 return self._pot_raise(state, frac)
+    #             return ActionCall()
+
+    #         if semi_bluff and eq + 0.06 >= need:
+    #             if state.can_act(ActionRaise) and fold_rate >= 0.34 and self._mix(0.26 if street == "flop" else 0.18, state, 301):
+    #                 frac = 0.72 if tex["very_wet"] else 0.58
+    #                 return self._pot_raise(state, frac)
+    #             return ActionCall()
+
+    #         if medium_made and eq + call_floor >= need:
+    #             return ActionCall()
+
+    #         if eq + call_floor >= need and cost <= 0.20 * pot:
+    #             return ActionCall()
+
+    #         return ActionFold() if state.can_act(ActionFold) else ActionCheck()
+
+    #     # No bet to face.
+    #     delayed = not is_first_to_act
+    #     if strong_made or eq >= 0.72:
+    #         if state.can_act(ActionRaise):
+    #             frac = 0.78 if tex["very_wet"] else 0.58
+    #             if delayed and not tex["very_wet"]:
+    #                 frac = 0.66
+    #             if spr <= 1.5 and eq >= 0.80:
+    #                 return ActionRaise(state.raise_bounds[1])
+    #             return self._pot_raise(state, frac)
+    #         return ActionCheck()
+
+    #     if medium_made or (eq >= 0.52 and not tex["very_wet"]):
+    #         if state.can_act(ActionRaise):
+    #             # Value/protection and delayed probes.
+    #             if delayed:
+    #                 freq = 0.62 if not tex["paired"] else 0.46
+    #             else:
+    #                 freq = 0.58 if self.last_action_was_aggro else 0.44
+    #             if self.opp.is_passive():
+    #                 freq += 0.06
+    #             if self._mix(freq, state, 302):
+    #                 frac = 0.52 if tex["very_wet"] else 0.40
+    #                 return self._pot_raise(state, frac)
+    #         return ActionCheck()
+
+    #     if semi_bluff:
+    #         if state.can_act(ActionRaise):
+    #             freq = 0.34 if street == "flop" else 0.22
+    #             if delayed:
+    #                 freq += 0.10
+    #             if fold_rate > 0.45:
+    #                 freq += 0.10
+    #             if self._mix(freq, state, 303):
+    #                 frac = 0.58 if draws["combo_draw"] else 0.44
+    #                 return self._pot_raise(state, frac)
+    #         return ActionCheck()
+
+    #     # Low-equity air: selective c-bets / probes only on favorable textures.
+    #     if state.can_act(ActionRaise):
+    #         bluff_freq = 0.0
+    #         if delayed and not tex["very_wet"]:
+    #             bluff_freq = 0.28
+    #         elif not delayed and not tex["very_wet"] and self.last_action_was_aggro:
+    #             bluff_freq = 0.20
+    #         if self.opp.fold_to_aggression_rate() > 0.48:
+    #             bluff_freq += 0.08
+    #         if tex["high_card"] >= 12 and max(_rank(c) for c in state.my_hand) >= 13:
+    #             bluff_freq += 0.05
+    #         if self._mix(bluff_freq, state, 304):
+    #             return self._pot_raise(state, 0.34)
+
+    #     return ActionCheck()
+
+    # # ------------------------------------------------------------------
+    # # River
+    # # ------------------------------------------------------------------
     def _river_action(self, game_info: GameInfo, state: PokerState, budget: float):
         eq = self._equity(state, budget)
         made = made_hand_info(state.my_hand, state.board)
@@ -1304,6 +1423,77 @@ class Player(BaseBot):
                 return self._pot_raise(state, frac)
 
         return ActionCheck()
+
+    # def _river_action(self, game_info: GameInfo, state: PokerState, budget: float):
+    #     eq = self._equity(state, budget)
+    #     made = made_hand_info(state.my_hand, state.board)
+    #     tex = board_texture(state.board)
+    #     cost = state.cost_to_call
+    #     pot = max(1, state.pot)
+
+    #     # --- FIX 2: Respect Massive Aggression ---
+    #     # If facing a near-pot bet or a massive overbet, mathematically discount our
+    #     # raw equity because the opponent's range is heavily polarized to the nuts.
+    #     if cost >= pot * 0.8:
+    #         eq *= 0.65
+
+    #     fold_rate = self.opp.fold_to_aggression_rate()
+    #     delayed = not state.is_bb
+    #     blocker = max(_rank(c) for c in state.my_hand) >= 13
+
+    #     nutted = made["category"] >= 4
+    #     strong_showdown = nutted or eq >= 0.72 or (made["overpair"] and eq >= 0.68)
+    #     bluff_catcher = eq >= 0.42 or made["top_pair"] or made["category"] >= 2
+
+    #     if cost > 0:
+    #         need = pot_odds_threshold(cost, pot)
+    #         if strong_showdown:
+    #             # --- FIX 1: Cap Raises on Paired Boards ---
+    #             # Stop the bot from getting into 5-bet wars on the river with weak
+    #             # two-pairs when the board is paired and counterfeiting is highly likely.
+    #             if tex["paired"] and made["category"] < 6:
+    #                 return ActionCall()
+
+    #             if state.can_act(ActionRaise) and eq >= 0.82:
+    #                 # Polar value raise.
+    #                 frac = 0.90 if tex["very_wet"] else 0.75
+    #                 return self._pot_raise(state, frac)
+    #             return ActionCall()
+
+    #         if bluff_catcher and eq + 0.01 >= need:
+    #             return ActionCall()
+    #         if eq >= need and cost <= 0.18 * pot:
+    #             return ActionCall()
+    #         return ActionFold() if state.can_act(ActionFold) else ActionCheck()
+
+    #     # No bet to face on river.
+    #     if strong_showdown:
+    #         if state.can_act(ActionRaise):
+    #             frac = 0.86 if eq >= 0.86 else 0.62
+    #             return self._pot_raise(state, frac)
+    #         return ActionCheck()
+
+    #     if eq >= 0.56 and state.can_act(ActionRaise):
+    #         thin_freq = 0.28 if not tex["very_wet"] else 0.16
+    #         if delayed:
+    #             thin_freq += 0.08
+    #         if self._mix(thin_freq, state, 401):
+    #             return self._pot_raise(state, 0.42)
+
+    #     # Polar bluff: use blockers and only vs folders.
+    #     if state.can_act(ActionRaise):
+    #         bluff_freq = 0.0
+    #         if fold_rate >= 0.52 and not tex["paired"]:
+    #             bluff_freq = 0.14
+    #         if blocker:
+    #             bluff_freq += 0.05
+    #         if delayed:
+    #             bluff_freq += 0.05
+    #         if eq <= 0.28 and self._mix(bluff_freq, state, 402):
+    #             frac = 0.72 if fold_rate >= 0.60 else 0.55
+    #             return self._pot_raise(state, frac)
+
+    #     return ActionCheck()
 
 
 if __name__ == "__main__":
